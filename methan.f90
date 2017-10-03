@@ -17,9 +17,9 @@ program methane
  real:: k1,k2,k3,k4,fnn
  integer:: n,i
 ! Reading z,t,s
- open(20,file='mar.dat')
- open(21,file='BlackSea.dat')
- open(22,file='mar_3500.dat')
+ open(20,file='test.dat')
+ open(21,file='conc.dat')
+ open(22,file='out.dat')
  nz=0
  do while(.not.eof(20))
   nz=nz+1
@@ -61,7 +61,7 @@ mp=4.8e-04  ! for rp=3500.
   if(n<4) then
       
 ! Radius calculation 
-! With Adams–Bashforth/Moulton method 4 order
+! With Adamsâ€“Bashforth/Moulton method 4 order
 
    frr(n)=fr(zr,rp)
    zr=zr-dt*vb(rp)   
