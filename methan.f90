@@ -3,7 +3,7 @@ module methan
  real,parameter:: g=981,rgaz=82.0575,rc=0.0584 !gravity constant, individual gas constant, critical radius
  real,parameter:: pi=3.14256,dif=1.5e-05,hg=7.9e+05 !pi, diffusion, Henry law constant
  real,parameter:: pa=1.
- integer:: nz,nm
+ integer:: nz,nm,nnn
  real:: kb,bb,tt ! k mass transfer
 end module
 !
@@ -12,19 +12,23 @@ program methane
  implicit none
  real:: fr,mt,vb
  real:: rstp,time,aa
- real,dimension(500000):: frr,mtt,ft
+ real,dimension(500000):: frr,mtt,ft,mm
  real:: rn,rp,dt,zr,bot,mn,mp,rnn,mnn
- real:: k1,k2,k3,k4,fnn
- integer:: n,i
+ real:: k1,k2,k3,k4,fnn,v
+ integer:: n,i,ng,k
+ real:: nbub,rpp,zg,sg
+ real,dimension(500000):: gor,flux
+ real,dimension(1000):: zf,tf
 ! Reading z,t,s
- open(20,file='test.dat')
- open(21,file='conc.dat')
- open(22,file='out.dat')
+ open(20,file='Laptev_sea_25_10_2014_1.dat')
+ open(21,file='conc_Nm_Laptev Sea.dat')
+ open(23,file='start_dat_2160 bub.dat')
+ open(22,file='output_2160.dat')
  nz=0
  do while(.not.eof(20))
   nz=nz+1
 ! Reading depth(horizont)(meters), temperature (Celsium degrees)
-  read(20,*) z(nz),t(nz),s(nz)
+  read(20,*) z(nz),s(nz),t(nz)
   d(nz)=rstp(s(nz),t(nz),0.,aa)/1000. ! in gr/cm^3
  end do
  z=z*1.e2 ! in cm 
@@ -38,56 +42,81 @@ program methane
  end do
  zm=zm*1.e2   ! depth (horizonts) to cm
  cm=cm/1.e9   ! concentration to mol
- 
-!Initial radius of bubble
- rp=3500. ! r in micrometer
 !Initial depth
- bot=1.e04 ! in cm
+ bot=0.79e04 ! in cm
 !The step in sec 
- dt=0.1 
- zr=bot 
- 
-!Initial volume of methane ( where r=0)
-mp=4.8e-04  ! for rp=3500. 
-!mp=2.4e-03 !for rp=6000. 
-!mp=2.4e-05  
-!mp=1.2e-05 !for rp=1000.
-
+ dt=0.1
+ nnn=0 ! Number data
+! Main cycle
+ do while(.not.eof(23))
+  nnn=nnn+1
+  zr=bot  
+! rp - radius (mm), v - volume, mp - initial gaz (mol), nbub - number bubbles
+  read(23,*) rpp,v,mp,nbub
+  rp=rpp*1000. ! rpp - in mm, rp - in micrometer
 ! Time cycle
- n=0; time=0.
- do while(.true.)
-  n=n+1
-  time=time+dt
-  if(n<4) then
-      
+  n=1; time=0.
+  frr(n)=fr(zr,rp)
+  do while(.true.)
+!
+   n=n+1
+   time=time+dt
+   if(n<=3) then
 ! Radius calculation 
-! With Adamsâ€“Bashforth/Moulton method 4 order
+! With Adams–Bashforth/Moulton method 4 order
+    zr=zr-dt*vb(rp)    
+    frr(n)=fr(zr,rp)
+    rn=rp+dt*frr(n)
+    mn=mp+4.*pi*rp*rp*bb*1.e-8*dt  
+    rp=rn
+    mm(n)=mp-mn
+    mp=mn
+   else
+    zr=zr-dt*vb(rp)
+    frr(n)=fr(zr,rp)
+    rnn=rp+dt*(55.*frr(n)-59.*frr(n-1)+37.*frr(n-2)-9.*frr(n-3))/24.
+!    zr=zr-dt*vb(rnn)
+    fnn=fr(zr,rnn)
+    rn=rp+dt*(9.*fnn+19*frr(n)-5.*frr(n-1)+frr(n-2))/24.
+    mn=mp+4.*pi*rnn*rnn*bb*1.e-8*dt !rp
+    rp=rnn
+    if(mn<0.) goto 10
+    mm(n)=mp-mn
+    mp=mn
+   end if
+!
+   if(zr<80.) exit
+   gor(n)=zr/100.
+   flux(n)=mm(n)*nbub
+!   write(22,'(6e13.5)') time,zr/100.,rn/1000.,mn,mm(n), kb
 
-   frr(n)=fr(zr,rp)
-   zr=zr-dt*vb(rp)   
-   rn=rp+dt*frr(n)
-   mn=mp+4.*pi*rp*rp*bb*1.e-8*dt  
-   rp=rn
-   mp=mn
-   
-  else
-
-   zr=zr-dt*vb(rp)
-   frr(n)=fr(zr,rp)
-   rnn=rp+dt*(55.*frr(n)-59.*frr(n-1)+37.*frr(n-2)-9.*frr(n-3))/24.
-   zr=zr-dt*vb(rnn)
-   fnn=fr(zr,rnn)
-   rn=rp+dt*(9.*fnn+19*frr(n)-5.*frr(n-1)+frr(n-2))/24.
-   mn=mp+4.*pi*rp*rp*bb*1.e-8*dt
-   rp=rn
-   mp=mn
-  end if
-
-  if(zr<100.) exit
-  write(22,'(4e13.5,\)') time,zr/100.,rn/1000.,mn, kb
- end do    
-
-    end program
+  end do ! End for single bubble    
+10  write(22,*) n-2,rpp
+  do i=2,n-1
+      write(22,*) gor(i),flux(i)
+  end do
+ end do ! End Main cycle
+!
+ tf=0. ! Total flux in layers
+ rewind(22)
+ do while(.not.eof(22))
+  read(22,*) ng ! Êîëè÷åñòâî ãîðèçîíòîâ=øàãîâ ïî âðåìåíè
+  do i=1,ng
+   read(22,*) zg, sg ! Ãîðèçîíò è ïîòîê ñî âñåõ ïóçûðåé ýòîãî ðàçìåðà
+   k=int(zg)+1 
+   tf(k)=tf(k)+sg
+  end do
+ end do
+!
+ open(33,file='Total_flux_2160.dat')
+ n=0
+ do i=0,79
+  n=n+1
+  write(33,*) i,tf(n)/2160 ! standart horizon ( in 0.5 meters), 
+  !total flux from all bubbles on this horizon per second
+ end do
+!
+end program
     
 real function fr(zr,r)
  use methan
@@ -148,7 +177,7 @@ real function mt(r)
  rcm=r*1.e-04
  mt=bb*4.*3.14256*rcm*rcm
  return
-    end function mt
+end function mt
 
     ! Selection and calculation of bubble velocity
     
@@ -156,8 +185,8 @@ real function vb(r)
  use methan
  implicit none
  real:: r
- real:: m1,m2,j1,j2,vbmin 
-  if (r<4.e03)  then
+ real:: m1,m2,j1,j2,vbmin
+ if (r<4.e03)  then
   m1 = -0.849
   m2 = -0.815
   j1 = 0.733
@@ -171,7 +200,6 @@ real function vb(r)
   vbmin = 19.15
  else
   print *, 'Incorrect radius'
-  stop
  end if
  vb=(vbmin+j1*(r-rc)**m1)*exp(j2*tt*(r-rc)**m2) ! cm/sec
  return
