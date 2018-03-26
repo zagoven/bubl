@@ -20,15 +20,17 @@ program methane
  real,dimension(500000):: gor,flux
  real,dimension(1000):: zf,tf
 ! Reading z,t,s
- open(20,file='Laptev_sea_25_10_2014_1.dat')
- open(21,file='conc_Nm_Laptev Sea.dat')
+ open(20,file='woa_sel_13_decav_00.dat')
+ open(21,file='met_conc_woa_sel_13_decav_00.dat')! in nmol
+ open(22,file='output00_2160.dat')
+ open(33,file='total_2160_per1hour_woa_sel_13_decav_00.dat')
  open(23,file='start_dat_2160 bub.dat')
- open(22,file='output_2160.dat')
+ 
  nz=0
  do while(.not.eof(20))
   nz=nz+1
 ! Reading depth(horizont)(meters), temperature (Celsium degrees)
-  read(20,*) z(nz),s(nz),t(nz)
+  read(20,*) z(nz),t(nz),s(nz)
   d(nz)=rstp(s(nz),t(nz),0.,aa)/1000. ! in gr/cm^3
  end do
  z=z*1.e2 ! in cm 
@@ -108,11 +110,11 @@ program methane
   end do
  end do
 !
- open(33,file='Total_flux_2160.dat')
+ 
  n=0
  do i=0,79
   n=n+1
-  write(33,*) i,tf(n)/2160 ! standart horizon ( in 0.5 meters), 
+  write(33,*) i,tf(n)! standart horizon !! per second делим на секунды 600 - в секундах, без - за 10 минут поток
   !total flux from all bubbles on this horizon per second
  end do
 !
